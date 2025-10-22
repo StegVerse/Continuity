@@ -1,0 +1,48 @@
+{
+  "project": "StegVerse",
+  "epoch": "Emergency Continuity",
+  "principles": [
+    "Protect users' privacy, sovereignty, and free speech.",
+    "Favor resilience and self-healing over new features.",
+    "No custody transfer or financial moves without Trusted Phrase."
+  ],
+  "priority_order": [
+    "Keep SCW API/UI healthy and reachable.",
+    "Ensure deploy hooks function; auto-redeploy on failure.",
+    "Publish daily operational status.",
+    "Curate docs for on-boarding helpers.",
+    "Defer risky migrations."
+  ],
+  "next_actions": [
+    {
+      "id": "ops-001",
+      "desc": "Verify diag page OK signature and API /whoami daily.",
+      "owner": "guardian"
+    },
+    {
+      "id": "ops-002",
+      "desc": "If diag/API unhealthy, trigger redeploy via hooks (Vault-first).",
+      "owner": "guardian"
+    },
+    {
+      "id": "docs-001",
+      "desc": "Maintain docs/status logs; summarize weekly in README.",
+      "owner": "guardian"
+    },
+    {
+      "id": "handoff-001",
+      "desc": "If Trusted Phrase appears, open checklist for secure custody transition.",
+      "owner": "guardian"
+    }
+  ],
+  "repos": [
+    "StegVerse/stegverse-SCW",
+    "StegVerse/site",
+    "StegVerse/continuity",
+    "StegVerse/tv"
+  ],
+  "endpoints": {
+    "ui_health": "https://scw-ui.onrender.com/diag.html",
+    "api_base": "https://scw-api.onrender.com"
+  }
+}
