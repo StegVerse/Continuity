@@ -1,0 +1,113 @@
+name: StegVerse Continuity (Guardian Mode)
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+  issues: write
+  id-token: write   # <— required for OIDC to TV
+
+jobs:
+  guardian:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+
+      - name: Install deps
+        run: python -m pip install --upgrade pip requests
+
+      # Obtain GitHub OIDC token for audience TV_AUDIENCE
+      - name: Get GitHub OIDC token
+        id: oidc
+        run: |
+          OIDC=$(curl -sSL -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${{ vars.TV_AUDIENCE }}")
+          echo "$OIDC" > oidc.json
+          echo "token=$(python -c 'import json;print(json.load(open(\"oidc.json\"))[""value""])')" >> $GITHUB_OUTPUT
+
+      # Exchange OIDC token for short-lived TV access token
+      - name: Exchange for TV access token
+        id: tv
+        env:
+          TV_BASE: ${{ vars.TV_BASE }}
+        run: |
+          set -e
+          GH_JWT="${{ steps.oidc.outputs.token }}"
+          # Adjust endpoint to your TV API:
+          # Expecting POST ${TV_BASE}/v1/oidc/exchange { "provider":"github", "token":"<GH_JWT>" }
+          AT=$(curl -sSL -X POST "$TV_BASE/v1/oidc/exchange" \
+            -H "Content-Type: application/json" \
+            -d "{\"provider\":\"github\",\"token\":\"$GH_JWT\"}")
+          echo "$AT" > tv_exchange.json
+          echo "access_token=$(python - <<'PY'\nimport json,sys\nprint(json.load(open('tv_exchange.json')).get('access_token',''))\nPY)" >> $GITHUB_OUTPUT
+
+      # Pull deploy hooks from TV (Vault-first). If TV fails, we’ll fall back to GitHub secrets.
+      - name: Fetch deploy hooks from TV
+        id: tv_fetch
+        env:
+          TV_BASE: ${{ vars.TV_BASE }}
+          TV_ACCESS: ${{ steps.tv.outputs.access_token }}
+          TV_SECRET_IDS_JSON: ${{ vars.TV_SECRET_IDS_JSON }}
+        run: |
+          set -e
+          python - <<'PY'
+          import os, json, sys, urllib.request
+          base = os.environ['TV_BASE'].rstrip('/')
+          access = os.environ.get('TV_ACCESS','')
+          mapping = json.loads(os.environ.get('TV_SECRET_IDS_JSON','{}'))
+          headers = {"Authorization": f"Bearer {access}", "Content-Type":"application/json", "User-Agent":"guardian-bot"}
+          out = {}
+          for key, sid in mapping.items():
+            req = urllib.request.Request(f"{base}/v1/secrets/get", data=json.dumps({"id":sid}).encode(), headers=headers, method="POST")
+            try:
+              with urllib.request.urlopen(req, timeout=20) as r:
+                val = json.loads(r.read().decode()).get("value","")
+              out[key] = val
+            except Exception as e:
+              out[key] = ""
+          print("TV:", {k:("OK" if v else "MISSING") for k,v in out.items()})
+          with open("tv_secrets.json","w") as f: json.dump(out,f)
+          PY
+
+      - name: Run guardian script
+        env:
+          # Core service endpoints (non-secret)
+          API_BASE: ${{ vars.API_BASE }}
+          UI_HEALTH: ${{ vars.UI_HEALTH }}
+          ADMIN_BOOTSTRAP_ROUTE: ${{ vars.ADMIN_BOOTSTRAP_ROUTE }}
+          TRUSTED_PHRASE: ${{ secrets.TRUSTED_PHRASE }}
+          STATUS_COMMIT_AUTHOR: ${{ vars.STATUS_COMMIT_AUTHOR }}
+          GUARDIAN_DAYS_NO_ACK: ${{ vars.GUARDIAN_DAYS_NO_ACK }}
+          PUBLIC_NOTE_ENABLED: ${{ vars.PUBLIC_NOTE_ENABLED }}
+          PUBLIC_NOTE_MD: ${{ vars.PUBLIC_NOTE_MD }}
+
+          # Vault-first values (loaded from tv_secrets.json)
+          TV_SECRETS_FILE: tv_secrets.json
+
+          # Fallback to GitHub secrets if TV returns MISSING
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          NETLIFY_DEPLOY_HOOK: ${{ secrets.NETLIFY_DEPLOY_HOOK }}
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/guardian.py
+
+      - name: Commit status (if changed)
+        run: |
+          if [ -n "$(git status --porcelain docs/status)" ]; then
+            git config user.name "StegVerse Guardian Bot"
+            git config user.email "guardian@stegverse.local"
+            git add docs/status
+            git commit -m "guardian: status update"
+            git push
+          fi
