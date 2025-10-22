@@ -37,3 +37,12 @@ Expose an endpoint (example): `POST /v1/oidc/exchange` → `{ "access_token": "<
 - `TV_SECRET_IDS_JSON` — JSON mapping:
   ```json
   {"render":"deploy/render-hook","netlify":"deploy/netlify-hook","vercel":"deploy/vercel-hook"}
+
+### Name-Resolution Tolerance
+Before declaring a repo “down,” StegContinuity attempts alternate name conventions:
+
+- **Org case:** `StegVerse` = `Stegverse` = `stegverse`
+- **Repo transformations:** hyphen vs camel (`StegVerse-Talk` ↔ `StegVerseTalk`), “StegVerse-” prefix, module name vs repo name (`StegTalk` ↔ `talk`, `StegVerse-SCW` ↔ `stegverse-scw`)
+- **Alias map:** see `config/repo_aliases.json`
+
+Only after all permutations fail will it classify a repo as unresolved.
