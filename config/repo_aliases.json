@@ -1,17 +1,57 @@
 {
   "org": {
     "canonical": "StegVerse",
-    "alternates": ["stegverse", "Stegverse", "STEGVERSE"]
+    "alternates": [
+      "stegverse",
+      "Stegverse",
+      "STEGVERSE"
+    ]
   },
   "repos": {
-    "stegverse-scw": ["StegVerse-SCW", "stegverse-SCW", "StegSCW", "stegscw", "SCW"],
-    "continuity": ["Continuity", "StegContinuity", "stegcontinuity"],
-    "talk": ["StegTalk", "stegtalk", "StegVerse-Talk", "Talk", "Stegtalk"],
-    "tv": ["StegTV", "stegtv", "TokenVault", "token-vault", "vault"]
+    "stegverse-scw": [
+      "StegVerse-SCW",
+      "stegverse-SCW",
+      "StegSCW",
+      "stegscw",
+      "SCW"
+    ],
+    "continuity": [
+      "Continuity",
+      "StegContinuity",
+      "stegcontinuity"
+    ],
+    "talk": [
+      "StegTalk",
+      "stegtalk",
+      "StegVerse-Talk",
+      "Talk",
+      "Stegtalk"
+    ],
+    "tv": [
+      "StegTV",
+      "stegtv",
+      "TokenVault",
+      "token-vault",
+      "vault"
+    ],
+    "site": [
+      "Site",
+      "site"
+    ]
   },
   "rules": {
-    "try_cases": ["as_is", "lower", "title"],
-    "try_prefixes": ["", "StegVerse-"],
-    "try_hyphens": ["-", ""]
+    "try_cases": [
+      "as_is",
+      "lower",
+      "title"
+    ],
+    "try_prefixes": [
+      "",
+      "StegVerse-"
+    ],
+    "try_hyphens": [
+      "-",
+      ""
+    ]
   }
 }
